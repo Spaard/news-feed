@@ -154,6 +154,9 @@ Coût indicatif : 5 à 15 €/mois pour la Container App, plus l'usage de Foundr
 az group create --name news-feed --location francecentral
 ```
 
+- Si `az login` propose seulement des comptes Windows déjà enregistrés, et que « Autre compte » ne s'ouvre pas : `az login --use-device-code`.
+- Si tu n'as pas le droit de créer un groupe, par exemple dans un abonnement d'entreprise, utilise un groupe existant : remplace `news-feed` par son nom dans `--resource-group` et dans la variable `AZURE_RESOURCE_GROUP`. Les ressources prennent alors la région de ce groupe.
+
 ### Mise en place, une seule fois
 
 1. **Foundry**. Dans le portail [ai.azure.com](https://ai.azure.com), créer une ressource Foundry :
@@ -208,6 +211,14 @@ az group create --name news-feed --location francecentral
 
    À partir de là, chaque push sur `main` qui passe la CI met l'app à jour, avec une nouvelle révision sur l'image du commit. Pour vérifier un déploiement, regarder le job `deploy` dans l'onglet *Actions* du repo, puis ouvrir l'URL.
 
+Avant l'étape 7, ou si elle n'est pas possible (droits insuffisants pour attribuer un rôle), mettre l'app à jour à la main une fois le job `image` du commit au vert dans *Actions*. Prendre le tag du commit plutôt que `latest`, qui peut encore désigner l'image précédente pendant que la CI tourne :
+
+```powershell
+az containerapp update --name news-feed --resource-group news-feed --image ghcr.io/spaard/news-feed:<sha-complet-du-commit>
+```
+
 Le job `deploy` ne change que l'image. Pour une modification de [infra/main.bicep](infra/main.bicep) (ressources, variables d'environnement) ou d'un secret (clé Foundry, token GHCR), relancer la commande de l'étape 5.
 
 Logs en direct : `az containerapp logs show --name news-feed --resource-group news-feed --follow`.
+
+La page de diagnostic d'Easy Auth `/.auth/me` n'existe pas ici, faute de stockage de jetons : elle renvoie la 404 de l'app. Pour le fournisseur GitHub, l'app lit le login dans l'en-tête `X-MS-CLIENT-PRINCIPAL` (claim `urn:github:login`), car `X-MS-CLIENT-PRINCIPAL-NAME` arrive vide.
