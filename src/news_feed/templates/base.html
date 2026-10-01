@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}news-feed{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
+  {# Application installable (PWA). Le manifest et les icônes sont publics (exclus du login). #}
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="icon" href="/static/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="news-feed">
+  <meta name="theme-color" content="#fbfaf8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151516" media="(prefers-color-scheme: dark)">
   <script>
     // Barre de chargement pendant la navigation (formulaires et liens internes).
     const loading = (on) => document.documentElement.classList.toggle("loading", on);

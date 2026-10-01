@@ -101,6 +101,12 @@ Ouvrir ensuite l'URL. GitHub demande de se connecter et d'autoriser l'app, puis 
 
 Il reste vide les premières minutes : la première relève démarre 60 s après le lancement et dure 1 à 2 minutes. La base de production part de zéro, sans reprendre la base locale.
 
+**Installer l'app sur le téléphone**, après t'être connecté une fois :
+- **Android (Chrome)** : menu ⋮, puis *Installer l'application* ou *Ajouter à l'écran d'accueil*.
+- **iPhone (Safari)** : bouton Partager, puis *Sur l'écran d'accueil*. L'app installée garde ses propres cookies : il faut s'y connecter une fois de plus.
+
+L'app s'ouvre ensuite en plein écran, avec son icône. Easy Auth laisse passer sans login le manifest et les icônes, dont le téléphone a besoin pour l'installation. Il garde aussi la session 30 jours, au lieu de 8 heures par défaut.
+
 ## 7. Déploiement continu (OIDC)
 
 Cette étape permet à GitHub Actions de déployer chaque push vert sur `main`, sans stocker de mot de passe Azure dans GitHub.
@@ -147,6 +153,7 @@ Dès le push suivant, le job `deploy` passe la Container App sur l'image du comm
 | Mettre à jour le code | Pousser sur `main`. Avec l'étape 7, la CI déploie toute seule |
 | Mettre à jour sans l'étape 7 | Attendre que le job `image` du commit soit vert, puis lancer `az containerapp update --name news-feed --resource-group news-feed --image ghcr.io/<compte>/news-feed:<sha complet>`. Préférer le sha à `latest`, qui peut encore désigner l'image précédente pendant que la CI tourne |
 | Changer l'infra, une variable d'environnement ou un secret (clé Foundry, token GHCR) | Relancer la commande de l'étape 5 |
+| Changer seulement la configuration d'Easy Auth, sans ressaisir les secrets | `az containerapp auth update`, avec par exemple `--excluded-paths` ou `--set login.cookieExpiration.timeToExpiration=…`, en gardant le Bicep aligné |
 | Lire les logs en direct | `az containerapp logs show --name news-feed --resource-group news-feed --follow` |
 
 ## Dépannage
