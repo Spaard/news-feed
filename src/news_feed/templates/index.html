@@ -45,6 +45,7 @@
   {% endif %}
 </div>
 
+{% if new_digest %}<p class="notice"><a href="/digest">{{ t.digest_ready }}</a></p>{% endif %}
 {% if error %}<p class="notice">{{ t.ai_error }}</p>{% endif %}
 {% if brief %}
   <section class="ai brief"><h2>{{ t.brief_title }}</h2>{{ brief.text | rich(brief.sources) }}</section>

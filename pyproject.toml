@@ -17,6 +17,7 @@ dependencies = [
     "openai>=3.22.1",
     "pydantic>=2.13.5",
     "trafilatura>=2.2.0",
+    "tzdata>=2026.4",
     "uvicorn>=0.54.0",
 ]
 

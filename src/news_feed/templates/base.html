@@ -30,7 +30,10 @@
     <a class="brand" href="/">news-feed</a>
     <span class="tagline">{{ t.tagline }}</span>
     {% set here = request.url.path ~ ('?' ~ request.url.query if request.url.query else '') %}
-    <a class="lang" href="/lang/{{ t.other_lang }}?{{ {'next': here} | urlencode }}">{{ t.other_lang_label }}</a>
+    <nav class="links">
+      <a href="/digest">{{ t.digest }}</a>
+      <a class="lang" href="/lang/{{ t.other_lang }}?{{ {'next': here} | urlencode }}">{{ t.other_lang_label }}</a>
+    </nav>
   </header>
   {% if not ai_enabled %}<p class="notice">{{ t.no_ai }}</p>{% endif %}
   <main>
