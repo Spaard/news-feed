@@ -1,3 +1,5 @@
+import base64
+import json
 import sqlite3
 import threading
 from datetime import UTC, datetime, timedelta
@@ -17,6 +19,13 @@ def make_app(tmp_path, client=None, **settings) -> tuple[TestClient, sqlite3.Con
     config = Settings(data_dir=tmp_path, **{"refresh_minutes": 0, **settings})
     app = web.create_app(config, load_catalog(), client, httpx2.MockTransport(web_pages))
     return TestClient(app), db.connect(config.db_path)
+
+
+def principal(login: str) -> str:
+    """X-MS-CLIENT-PRINCIPAL tel qu'Easy Auth (ACA) le formate pour le fournisseur GitHub :
+    X-MS-CLIENT-PRINCIPAL-NAME reste vide, le login est un claim de ce principal."""
+    claims = {"claims": [{"typ": "urn:github:login", "val": login}]}
+    return base64.b64encode(json.dumps(claims).encode()).decode()
 
 
 def add_quake(conn: sqlite3.Connection) -> int:
@@ -193,10 +202,18 @@ def test_language_switch_refuses_external_redirects(tmp_path):
 def test_only_the_owner_gets_through(tmp_path):
     client, _ = make_app(tmp_path, allowed_user="spaard")
 
+    def status(login: str | None) -> int:
+        headers = {"X-MS-CLIENT-PRINCIPAL": principal(login)} if login else {}
+        return client.get("/", headers=headers).status_code
+
     assert client.get("/").status_code == 403
-    assert client.get("/", headers={"X-MS-CLIENT-PRINCIPAL-NAME": "intrus"}).status_code == 403
-    assert client.get("/", headers={"X-MS-CLIENT-PRINCIPAL-NAME": "spaard"}).status_code == 200
-    assert client.get("/", headers={"X-MS-CLIENT-PRINCIPAL-NAME": "Spaard"}).status_code == 200
+    assert status("intrus") == 403
+    assert status("spaard") == 200
+    assert status("Spaard") == 200
+    # X-MS-CLIENT-PRINCIPAL-NAME est vide pour le fournisseur GitHub sur Container Apps :
+    # le vérifier directement ne doit donc pas suffire à passer.
+    assert client.get("/", headers={"X-MS-CLIENT-PRINCIPAL-NAME": "spaard"}).status_code == 403
+    assert client.get("/", headers={"X-MS-CLIENT-PRINCIPAL": "pas du base64"}).status_code == 403
     assert client.get("/healthz").status_code == 200
 
 

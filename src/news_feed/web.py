@@ -121,6 +121,20 @@ def local_path(target: str) -> str:
     return target if target.startswith("/") and not target.startswith(("//", "/\\")) else "/"
 
 
+def github_login(request: Request) -> str:
+    """Login GitHub (en minuscules) tel qu'Easy Auth (ACA) l'a authentifié, ou "" si absent ou
+    illisible. X-MS-CLIENT-PRINCIPAL-NAME est vide pour le fournisseur GitHub : le login est
+    dans les claims du principal (X-MS-CLIENT-PRINCIPAL, JSON encodé en base64), sous
+    urn:github:login."""
+    encoded = request.headers.get("X-MS-CLIENT-PRINCIPAL", "")
+    try:
+        principal = json.loads(base64.b64decode(encoded + "=" * (-len(encoded) % 4)))
+        claims = {claim["typ"]: claim["val"] for claim in principal["claims"]}
+        return claims["urn:github:login"].lower()
+    except Exception:  # header absent, mal formé, ou sans ce claim (fournisseur différent)
+        return ""
+
+
 def page_numbers(page: int, pages: int) -> list[int | None]:
     """Numéros de page à afficher : la première, la dernière et les voisines de `page` ;
     None marque un saut."""
@@ -210,29 +224,12 @@ def create_app(
         # Derrière Easy Auth (ACA), n'importe quel compte GitHub peut se connecter : on ne laisse
         # passer que le propriétaire (login GitHub, insensible à la casse). Les sondes de santé
         # arrivent sans authentification.
-        user = request.headers.get("X-MS-CLIENT-PRINCIPAL-NAME", "")
         if (
             settings.allowed_user
             and request.url.path != "/healthz"
-            and user.lower() != settings.allowed_user.lower()
+            and github_login(request) != settings.allowed_user.lower()
         ):
-            # DEBUG TEMPORAIRE : affiche ce qu'Easy Auth envoie vraiment, pour calibrer
-            # allowed_user. À retirer une fois le bon identifiant confirmé.
-            principal_b64 = request.headers.get("X-MS-CLIENT-PRINCIPAL", "")
-            try:
-                padded = principal_b64 + "=" * (-len(principal_b64) % 4)
-                principal = json.loads(base64.b64decode(padded)) if padded else None
-            except Exception as exc:  # noqa: BLE001 (diagnostic, jamais en usage normal)
-                principal = f"décodage impossible : {exc}"
-            debug = {
-                "X-MS-CLIENT-PRINCIPAL-NAME": user,
-                "X-MS-CLIENT-PRINCIPAL-ID": request.headers.get("X-MS-CLIENT-PRINCIPAL-ID"),
-                "X-MS-CLIENT-PRINCIPAL": principal,
-            }
-            return PlainTextResponse(
-                "Accès refusé\n\n" + json.dumps(debug, indent=2, ensure_ascii=False),
-                status_code=403,
-            )
+            return PlainTextResponse("Accès refusé", status_code=403)
         # Les actions (payantes) ne partent que des pages de l'app, pas d'un autre site.
         if request.method == "POST" and request.headers.get("Sec-Fetch-Site") not in (
             None,
