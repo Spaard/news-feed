@@ -1,0 +1,6 @@
+#!/bin/sh
+# Mêmes vérifications que le job « check » de la CI : un push qui passe ce hook passe la CI.
+set -e
+uv run ruff check .
+uv run ruff format --check .
+uv run pytest -q

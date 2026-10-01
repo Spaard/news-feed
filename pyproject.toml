@@ -1,0 +1,43 @@
+[project]
+name = "news-feed"
+version = "0.1.0"
+description = "Agrégateur d'actualité personnel : stories multi-sources FR/EN, tags, contexte et questions de suivi par IA."
+readme = "README.md"
+authors = [
+    { name = "Gaspard Baumelou", email = "gaspard.baumelou@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.142.2",
+    "feedparser>=6.0.14",
+    "httpx2>=2.13.1",
+    "jinja2>=3.1.6",
+    "markupsafe>=3.0.3",
+    "numpy>=2.5.3",
+    "openai>=3.22.1",
+    "pydantic>=2.13.5",
+    "trafilatura>=2.2.0",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+news-feed = "news_feed:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

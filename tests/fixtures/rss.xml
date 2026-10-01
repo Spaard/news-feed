@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Exemple</title>
+    <link>https://example.com/</link>
+    <description>Flux de test</description>
+    <item>
+      <title>Premier &amp; titre</title>
+      <link>https://example.com/article-1?id=42&amp;xtor=RSS-3208&amp;utm_source=rss#top</link>
+      <description>&lt;p&gt;Texte avec du &lt;b&gt;gras&lt;/b&gt; et des entités &amp;amp; co.&lt;/p&gt;</description>
+      <pubDate>Thu, 01 Oct 2026 10:30:00 +0200</pubDate>
+    </item>
+    <item>
+      <title>Article sans date</title>
+      <link>https://example.com/article-2</link>
+    </item>
+    <item>
+      <title>Article daté du futur</title>
+      <link>https://example.com/article-3</link>
+      <pubDate>Fri, 01 Jan 2100 00:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Article d'archive</title>
+      <link>https://example.com/archive</link>
+      <pubDate>Mon, 01 Jan 2024 00:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title></title>
+      <link>https://example.com/sans-titre</link>
+    </item>
+  </channel>
+</rss>

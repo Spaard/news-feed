@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ story.title }} · news-feed{% endblock %}
+{% block content %}
+<p><a href="/">{{ t.back }}</a></p>
+<article class="story detail">
+  <h1>
+    {{ story.title }}
+    {% if story.translated %}<small class="badge">{{ t.translated }}</small>{% endif %}
+  </h1>
+  {% if story.summary %}<p class="summary">{{ story.summary }}</p>{% endif %}
+  {% if synthesis %}
+    <section class="ai"><h2>{{ t.synthesis_title }}</h2>{{ synthesis | rich(sources) }}</section>
+  {% elif ai_enabled %}
+    <form class="actions" method="post" action="/stories/{{ story.id }}/ask" onsubmit="this.classList.add('waiting')">
+      <input type="hidden" name="question" value="{{ t.preset_sources }}">
+      <button type="submit">{{ t.preset_sources_label }}</button><span class="wait">{{ t.waiting }}</span>
+    </form>
+  {% endif %}
+  <p class="meta">
+    {{ story.outlets_label }} · {{ ago(story.last_at, t) }}
+    {% for slug in story.tags %}
+      · <a href="/?tag={{ slug }}">{{ tags[slug] | attr('label_' ~ lang) }}</a>
+    {% endfor %}
+    · <a href="#chat">{{ t.dig }} ↓</a>
+  </p>
+</article>
+
+<section>
+  <h2>{{ t.articles }}</h2>
+  <ul class="sources">
+    {% for article in articles %}
+      <li>
+        <a href="/articles/{{ article.id }}" lang="{{ article.lang }}">{{ article.title }}</a>
+        <span class="meta">
+          {{ article.source }} · {{ article.lang | upper }} · {{ ago(article.published_at, t) }}
+          {% if article.une %} · {{ t.une }}{% endif %}
+          {% if article.paywall %} · {{ t.paywall }}{% endif %}
+          · <a class="out" href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ t.original }} ↗</a>
+        </span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section id="chat" class="chat">
+  <h2>{{ t.dig }}</h2>
+  {% if error %}<p class="notice">{{ t.ai_error }}</p>{% endif %}
+  {% for message in thread %}
+    {% if message.role == 'user' %}
+      <div class="message user"><p class="who">{{ t.you }}</p><p>{{ message.content }}</p></div>
+    {% else %}
+      <div class="message assistant">{{ message.content | rich(sources) }}</div>
+    {% endif %}
+  {% endfor %}
+  {% if ai_enabled %}
+    <div class="presets">
+      {% for preset in (('preset_context',) if synthesis else ('preset_sources', 'preset_context')) %}
+        <form method="post" action="/stories/{{ story.id }}/ask" onsubmit="this.classList.add('waiting')">
+          <input type="hidden" name="question" value="{{ t[preset] }}">
+          <button type="submit">{{ t[preset ~ '_label'] }}</button><span class="wait">{{ t.waiting }}</span>
+        </form>
+      {% endfor %}
+    </div>
+    <form class="ask" method="post" action="/stories/{{ story.id }}/ask" onsubmit="this.classList.add('waiting')">
+      <textarea name="question" rows="2" required placeholder="{{ t.ask_placeholder }}"></textarea>
+      <button type="submit">{{ t.ask }}</button><span class="wait">{{ t.waiting }}</span>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}
