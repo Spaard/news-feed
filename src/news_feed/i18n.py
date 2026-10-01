@@ -24,6 +24,32 @@ TEXTS = {
         "updated": "relevé {ago}",
         "refresh": "Actualiser",
         "refreshing": "Relève en cours, recharge la page dans 1 à 2 min.",
+        "digest": "Digest",
+        "digest_title": "Le digest du {date}",
+        "digest_ready": "☀️ Le digest de ce matin est prêt",
+        "digest_about": (
+            "Les sujets les plus importants des dernières 24 h, préparés chaque matin à 7 h "
+            "(heure de Paris)."
+        ),
+        "digest_empty": (
+            "Pas encore de digest : il est préparé chaque matin à 7 h (heure de Paris)."
+        ),
+        "date": "{weekday} {day} {month}",
+        "weekdays": ("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"),
+        "months": (
+            "janvier",
+            "février",
+            "mars",
+            "avril",
+            "mai",
+            "juin",
+            "juillet",
+            "août",
+            "septembre",
+            "octobre",
+            "novembre",
+            "décembre",
+        ),
         "sources_one": "1 média",
         "sources_many": "{n} médias",
         "une": "à la une",
@@ -92,6 +118,30 @@ TEXTS = {
         "updated": "fetched {ago}",
         "refresh": "Refresh",
         "refreshing": "Refreshing, reload the page in 1 to 2 min.",
+        "digest": "Digest",
+        "digest_title": "Digest for {date}",
+        "digest_ready": "☀️ This morning's digest is ready",
+        "digest_about": (
+            "The most important stories of the last 24 hours, prepared every morning at 7 am "
+            "(Paris time)."
+        ),
+        "digest_empty": "No digest yet: it is prepared every morning at 7 am (Paris time).",
+        "date": "{weekday}, {month} {day}",
+        "weekdays": ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+        "months": (
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+        ),
         "sources_one": "1 outlet",
         "sources_many": "{n} outlets",
         "une": "front page",

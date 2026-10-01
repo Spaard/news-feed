@@ -9,10 +9,11 @@ import re
 import sqlite3
 from collections.abc import Mapping, Sequence
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from importlib.resources import files
 from typing import Annotated
 from urllib.parse import parse_qs, urlencode
+from zoneinfo import ZoneInfo
 
 import httpx2
 import openai
@@ -41,6 +42,9 @@ PUBLIC_PATHS = ("/healthz", "/static/")
 ZONES = {"france": "france", "monde": "international"}
 PAGE_SIZE = 30
 BRIEF_STORIES = 20
+# Digest du matin : chaque jour dès cette heure (heure de Paris), le brief des dernières 24 h.
+DIGEST_HOUR = 7
+DIGEST_TIMEZONE = ZoneInfo("Europe/Paris")
 PACKAGE = files("news_feed")
 # Lors d'un déploiement ACA, l'ancienne révision tourne encore quelques secondes à côté de la
 # nouvelle : on attend qu'elle soit arrêtée avant d'écrire dans la base partagée (Azure Files).
@@ -80,6 +84,14 @@ def card(story: sqlite3.Row, articles: Sequence[sqlite3.Row], tags: list[str], l
         "tags": tags,
         "last_at": max(article["published_at"] for article in articles),
     }
+
+
+def long_date(day: str, texts: Mapping) -> str:
+    """Date ISO en toutes lettres : « jeudi 1 octobre », « Thursday, October 1 »."""
+    d = date.fromisoformat(day)
+    return texts["date"].format(
+        weekday=texts["weekdays"][d.weekday()], day=d.day, month=texts["months"][d.month - 1]
+    )
 
 
 def with_query(request: Request, **changes: object) -> str:
@@ -179,7 +191,9 @@ def create_app(
     )
     tags = {tag.slug: tag for tag in catalog.tags}
     templates = Jinja2Templates(directory=str(PACKAGE / "templates"))
-    templates.env.globals.update(ago=ago, with_query=with_query, periods=PERIODS)
+    templates.env.globals.update(
+        ago=ago, long_date=long_date, with_query=with_query, periods=PERIODS
+    )
     templates.env.filters["rich"] = rich_text
 
     cycle = asyncio.Lock()  # une seule relève à la fois, périodique ou manuelle
@@ -191,6 +205,7 @@ def create_app(
                 await ingest.run_cycle(conn, catalog, client)
                 if client is not None:
                     await followup.refresh_syntheses(conn, client, http)
+                    await write_digests()
             except Exception:
                 log.exception("relève en échec")
 
@@ -291,6 +306,8 @@ def create_app(
         total = rows[0]["total"] if rows else 0
         loaded = db.load_stories(conn, [row["id"] for row in rows])
         updated = conn.execute("SELECT max(fetched_at) FROM feeds").fetchone()[0]
+        today = datetime.now(DIGEST_TIMEZONE).date().isoformat()
+        digest = latest_digest(lang_of(request))
         return render(
             request,
             "index.html",
@@ -305,6 +322,10 @@ def create_app(
             page_numbers=page_numbers(page, -(-total // PAGE_SIZE)),
             updated=updated,
             refreshing=cycle.locked(),
+            # Le digest du jour est annoncé jusqu'à ce qu'il ait été lu (cookie digest_seen).
+            new_digest=digest is not None
+            and digest[0] == today
+            and request.cookies.get("digest_seen") != today,
             brief=load_brief(brief),
             error=error,
         )
@@ -352,6 +373,16 @@ def create_app(
             query=chosen["q"],
             limit=BRIEF_STORIES,
         )
+        try:
+            key = await write_brief(rows, lang)
+        except (openai.OpenAIError, ai.Unavailable) as exc:
+            log.warning("brief indisponible : %s", exc)
+            return RedirectResponse("/?" + urlencode([*filters, ("error", 1)]), status_code=303)
+        return RedirectResponse("/?" + urlencode([*filters, ("brief", key)]), status_code=303)
+
+    async def write_brief(rows: Sequence[sqlite3.Row], lang: str) -> str:
+        """Rédige le brief des stories `rows` dans `lang`, sauf s'il est déjà en cache (texte et
+        sources), et renvoie sa clé. Lève ai.Unavailable ou openai.OpenAIError."""
         cards = [card(*story, lang) for story in db.load_stories(conn, [r["id"] for r in rows])]
         numbered = "\n\n".join(
             f"[{i}] {c['title']} ({c['outlets_label']})\n{c['summary']}"
@@ -359,16 +390,47 @@ def create_app(
         )
         key = ai.cache_key("brief", lang, numbered)
         if db.cache_get(conn, key) is None:
-            try:
-                if client is None or not cards:
-                    raise ai.Unavailable("IA non configurée" if client is None else "aucune story")
-                text = await ai.brief(client, numbered, lang)
-            except (openai.OpenAIError, ai.Unavailable) as exc:
-                log.warning("brief indisponible : %s", exc)
-                return RedirectResponse("/?" + urlencode([*filters, ("error", 1)]), status_code=303)
+            if client is None or not cards:
+                raise ai.Unavailable("IA non configurée" if client is None else "aucune story")
+            text = await ai.brief(client, numbered, lang)
             sources = [(c["title"], f"/stories/{c['id']}") for c in cards]
             db.cache_put(conn, key, json.dumps({"text": text, "sources": sources}), ingest.now())
-        return RedirectResponse("/?" + urlencode([*filters, ("brief", key)]), status_code=303)
+        return key
+
+    async def write_digests() -> None:
+        """Digest du matin : dès DIGEST_HOUR, une fois par jour et par langue, le brief des
+        stories les plus importantes des dernières 24 h. Rangé en cache sous
+        « digest:<langue>:<jour> », qui pointe vers le brief. Un échec est retenté à la relève
+        suivante."""
+        local = datetime.now(DIGEST_TIMEZONE)
+        if local.hour < DIGEST_HOUR:
+            return
+        since = (datetime.now(UTC) - PERIODS["day"]).isoformat(timespec="seconds")
+        rows = db.list_stories(conn, since=since, limit=BRIEF_STORIES)
+        for lang in LANGS:
+            pointer = f"digest:{lang}:{local.date().isoformat()}"
+            if db.cache_get(conn, pointer) is not None:
+                continue
+            try:
+                db.cache_put(conn, pointer, await write_brief(rows, lang), ingest.now())
+            except (openai.OpenAIError, ai.Unavailable) as exc:
+                log.warning("digest du matin (%s) indisponible : %s", lang, exc)
+
+    def latest_digest(lang: str) -> tuple[str, dict | None] | None:
+        """(jour, brief) du dernier digest du matin dans `lang`, s'il y en a un."""
+        row = conn.execute(
+            "SELECT key, value FROM ai_cache WHERE key LIKE ? ORDER BY key DESC LIMIT 1",
+            (f"digest:{lang}:%",),
+        ).fetchone()
+        return (row["key"].rsplit(":", 1)[1], load_brief(row["value"])) if row else None
+
+    @app.get("/digest")
+    async def digest_page(request: Request):
+        day, brief = latest_digest(lang_of(request)) or (None, None)
+        response = render(request, "digest.html", day=day, brief=brief)
+        if day:  # l'accueil n'annonce plus ce digest-là
+            response.set_cookie("digest_seen", day, max_age=7 * 24 * 3600, samesite="lax")
+        return response
 
     @app.get("/stories/{story_id}")
     async def story_page(request: Request, story_id: int, error: str = ""):

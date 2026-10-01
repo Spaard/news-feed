@@ -52,7 +52,9 @@ en gardant ses paragraphes. {PLAIN_TEXT}"""
 BRIEF_PROMPT = f"""Tu rédiges un brief d'actualité en {{language}} pour quelqu'un qui veut être \
 au courant en deux minutes. À partir des stories numérotées (classées par importance), fais le \
 point par grand thème, en quelques phrases par sujet majeur, et cite les stories [n]. N'invente \
-rien qui ne soit pas dans leurs titres et chapôs. {PLAIN_TEXT}"""
+rien qui ne soit pas dans leurs titres et chapôs. Un paragraphe par thème, qui commence par le nom \
+du thème suivi de deux-points (« Moyen-Orient : … »), sans tiret ni titre seul sur sa ligne ; une \
+ligne vide entre deux thèmes. {PLAIN_TEXT}"""
 
 
 class _ArticleTags(BaseModel):

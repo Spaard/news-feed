@@ -28,6 +28,7 @@ news-feed relève environ 80 flux RSS (Le Monde, France Info, BBC, The Guardian,
 | 🌍 **FR ⇄ EN en un clic** | Le même fil dans les deux langues. Titres traduits automatiquement quand aucun média ne couvre l'info dans la langue choisie. |
 | 🔍 **Creuser** | Synthèse détaillée des sources, tenue à jour quand l'affaire avance, « Comprendre le contexte », questions de suivi. L'IA lit les articles gratuits, Wikipédia et l'archive de l'app. |
 | 📚 **Sources citées** | Chaque réponse de l'IA renvoie à ses sources [n] : articles, pages Wikipédia, stories. |
+| ☀️ **Digest du matin** | Chaque jour à 7 h, l'essentiel des dernières 24 h, par thème et sources citées, annoncé à l'ouverture de l'app. |
 | 📱 **Une vraie app** | S'installe sur l'écran d'accueil du téléphone et s'ouvre en plein écran, sans barre de navigateur. |
 | 💸 **IA maîtrisée** | Seuls le regroupement, les tags et les titres traduits tournent tout seuls, avec de petits modèles. Le reste ne part que sur un clic, et il est mis en cache. |
 
@@ -113,6 +114,6 @@ git config core.hooksPath .githooks                 # une fois par clone : véri
 - [x] Déploiement continu par OIDC : chaque push vert sur `main` met l'app à jour
 - [x] Synthèse détaillée régénérée quand de nouveaux articles rejoignent la story
 - [x] PWA : installable sur l'écran d'accueil du téléphone
-- [ ] Digest du matin
+- [x] Digest du matin
 - [ ] Dossiers de fond : suivre une même affaire sur plusieurs mois
 - [ ] Hébergement sur un NAS Synology, avec la même image
