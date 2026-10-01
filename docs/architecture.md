@@ -116,7 +116,11 @@ Personne ne peut fabriquer lui-même cet en-tête. Le conteneur n'est joignable 
 
 > Sur Container Apps, avec le fournisseur GitHub, l'en-tête `X-MS-CLIENT-PRINCIPAL-NAME` arrive **vide** : le login se trouve dans les claims de `X-MS-CLIENT-PRINCIPAL`. On l'a constaté lors du premier déploiement.
 
-La sonde de santé `/healthz` n'est pas soumise à ce contrôle. Azure l'appelle directement sur le conteneur pour savoir s'il est vivant.
+Quelques chemins échappent au login :
+- **la sonde de santé `/healthz`** : Azure l'appelle directement sur le conteneur pour savoir s'il est vivant ;
+- **le manifest et les icônes de la PWA** : le téléphone les télécharge *sans* cookie pour installer l'app, Easy Auth les exclut donc du login (liste `excludedPaths` du Bicep). Ils ne contiennent aucune donnée.
+
+La session Easy Auth dure 30 jours au lieu de 8 heures, pour que l'app installée ne redemande pas le login chaque jour.
 
 ## Les secrets
 

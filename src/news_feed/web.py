@@ -35,6 +35,8 @@ PERIODS = {
     "month": timedelta(days=30),
     "year": timedelta(days=365),
 }
+# Chemins accessibles sans login (Easy Auth en exclut aussi les fichiers de la PWA, voir le Bicep).
+PUBLIC_PATHS = ("/healthz", "/static/")
 # Filtre France / Monde : zone → tag de story exigé.
 ZONES = {"france": "france", "monde": "international"}
 PAGE_SIZE = 30
@@ -222,11 +224,12 @@ def create_app(
     @app.middleware("http")
     async def guard(request: Request, call_next):
         # Derrière Easy Auth (ACA), n'importe quel compte GitHub peut se connecter : on ne laisse
-        # passer que le propriétaire (login GitHub, insensible à la casse). Les sondes de santé
-        # arrivent sans authentification.
+        # passer que le propriétaire (login GitHub, insensible à la casse). Restent publics : les
+        # sondes de santé, et les fichiers statiques, que le téléphone télécharge sans cookie
+        # pour installer l'app (manifest, icônes).
         if (
             settings.allowed_user
-            and request.url.path != "/healthz"
+            and not request.url.path.startswith(PUBLIC_PATHS)
             and github_login(request) != settings.allowed_user.lower()
         ):
             return PlainTextResponse("Accès refusé", status_code=403)
