@@ -150,6 +150,17 @@ resource auth 'Microsoft.App/containerApps/authConfigs@2024-03-01' = {
     globalValidation: {
       unauthenticatedClientAction: 'RedirectToLoginPage'
       redirectToProvider: 'github'
+      // Le téléphone télécharge le manifest et les icônes sans cookie pour installer l'app.
+      excludedPaths: [
+        '/static/manifest.json'
+        '/static/icon-192.png'
+        '/static/icon-512.png'
+        '/static/apple-touch-icon.png'
+      ]
+    }
+    // Session de 30 jours (8 h par défaut) : l'app installée ne redemande pas le login chaque jour.
+    login: {
+      cookieExpiration: { convention: 'FixedTime', timeToExpiration: '30.00:00:00' }
     }
     identityProviders: {
       gitHub: {

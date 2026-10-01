@@ -73,6 +73,19 @@ def test_healthz(tmp_path):
     assert client.get("/healthz").text == "ok"
 
 
+def test_app_is_installable_on_a_phone(tmp_path):
+    client, _ = make_app(tmp_path)
+
+    assert '<link rel="manifest" href="/static/manifest.json">' in client.get("/").text
+    manifest = client.get("/static/manifest.json").json()
+    assert (manifest["display"], manifest["start_url"]) == ("standalone", "/")
+    for icon in manifest["icons"]:
+        png = client.get(icon["src"]).content
+        # Largeur et hauteur sont dans l'en-tête IHDR du PNG, octets 16 à 24.
+        width, height = int.from_bytes(png[16:20]), int.from_bytes(png[20:24])
+        assert icon["sizes"] == f"{width}x{height}", icon["src"]
+
+
 def test_index_is_french_by_default_and_switches_to_english(tmp_path):
     client, conn = make_app(tmp_path)
     add_quake(conn)
@@ -215,6 +228,8 @@ def test_only_the_owner_gets_through(tmp_path):
     assert client.get("/", headers={"X-MS-CLIENT-PRINCIPAL-NAME": "spaard"}).status_code == 403
     assert client.get("/", headers={"X-MS-CLIENT-PRINCIPAL": "pas du base64"}).status_code == 403
     assert client.get("/healthz").status_code == 200
+    # Le téléphone télécharge le manifest et les icônes sans cookie pour installer l'app.
+    assert client.get("/static/manifest.json").status_code == 200
 
 
 def test_background_refresh_starts_with_the_app(tmp_path, monkeypatch):
