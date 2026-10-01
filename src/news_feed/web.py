@@ -2,6 +2,7 @@
 articles, brief, bascule FR/EN, relève en fond."""
 
 import asyncio
+import base64
 import json
 import logging
 import re
@@ -215,7 +216,23 @@ def create_app(
             and request.url.path != "/healthz"
             and user.lower() != settings.allowed_user.lower()
         ):
-            return PlainTextResponse("Accès refusé", status_code=403)
+            # DEBUG TEMPORAIRE : affiche ce qu'Easy Auth envoie vraiment, pour calibrer
+            # allowed_user. À retirer une fois le bon identifiant confirmé.
+            principal_b64 = request.headers.get("X-MS-CLIENT-PRINCIPAL", "")
+            try:
+                padded = principal_b64 + "=" * (-len(principal_b64) % 4)
+                principal = json.loads(base64.b64decode(padded)) if padded else None
+            except Exception as exc:  # noqa: BLE001 (diagnostic, jamais en usage normal)
+                principal = f"décodage impossible : {exc}"
+            debug = {
+                "X-MS-CLIENT-PRINCIPAL-NAME": user,
+                "X-MS-CLIENT-PRINCIPAL-ID": request.headers.get("X-MS-CLIENT-PRINCIPAL-ID"),
+                "X-MS-CLIENT-PRINCIPAL": principal,
+            }
+            return PlainTextResponse(
+                "Accès refusé\n\n" + json.dumps(debug, indent=2, ensure_ascii=False),
+                status_code=403,
+            )
         # Les actions (payantes) ne partent que des pages de l'app, pas d'un autre site.
         if request.method == "POST" and request.headers.get("Sec-Fetch-Site") not in (
             None,
