@@ -9,13 +9,28 @@
   </h1>
   {% if story.summary %}<p class="summary">{{ story.summary }}</p>{% endif %}
   {% if synthesis %}
-    <section class="ai"><h2>{{ t.synthesis_title }}</h2>{{ synthesis | rich(sources) }}</section>
+    <section class="ai synthesis">
+      <h2>{{ t.synthesis_title }}</h2>
+      {{ synthesis.content | rich(sources) }}
+      {% set when = ago(synthesis.created_at, t) %}
+      <p class="meta">
+        {{ t.synthesis_meta_one.format(ago=when) if synthesis.articles == 1
+           else t.synthesis_meta_many.format(n=synthesis.articles, ago=when) }}
+      </p>
+      {% set new = articles | length - synthesis.articles %}
+      {% if new > 0 and ai_enabled %}
+        <form class="actions" method="post" action="/stories/{{ story.id }}/synthesis" onsubmit="this.classList.add('waiting')">
+          <span class="meta">{{ t.synthesis_new_one if new == 1 else t.synthesis_new_many.format(n=new) }}</span>
+          <button type="submit">{{ t.synthesis_update }}</button><span class="wait">{{ t.waiting }}</span>
+        </form>
+      {% endif %}
+    </section>
   {% elif ai_enabled %}
-    <form class="actions" method="post" action="/stories/{{ story.id }}/ask" onsubmit="this.classList.add('waiting')">
-      <input type="hidden" name="question" value="{{ t.preset_sources }}">
-      <button type="submit">{{ t.preset_sources_label }}</button><span class="wait">{{ t.waiting }}</span>
+    <form class="actions" method="post" action="/stories/{{ story.id }}/synthesis" onsubmit="this.classList.add('waiting')">
+      <button type="submit">{{ t.synthesize }}</button><span class="wait">{{ t.waiting }}</span>
     </form>
   {% endif %}
+  {% if error == 'synthesis' %}<p class="notice">{{ t.ai_error }}</p>{% endif %}
   <p class="meta">
     {{ story.outlets_label }} · {{ ago(story.last_at, t) }}
     {% for slug in story.tags %}
@@ -44,7 +59,7 @@
 
 <section id="chat" class="chat">
   <h2>{{ t.dig }}</h2>
-  {% if error %}<p class="notice">{{ t.ai_error }}</p>{% endif %}
+  {% if error == '1' %}<p class="notice">{{ t.ai_error }}</p>{% endif %}
   {% for message in thread %}
     {% if message.role == 'user' %}
       <div class="message user"><p class="who">{{ t.you }}</p><p>{{ message.content }}</p></div>
@@ -53,14 +68,10 @@
     {% endif %}
   {% endfor %}
   {% if ai_enabled %}
-    <div class="presets">
-      {% for preset in (('preset_context',) if synthesis else ('preset_sources', 'preset_context')) %}
-        <form method="post" action="/stories/{{ story.id }}/ask" onsubmit="this.classList.add('waiting')">
-          <input type="hidden" name="question" value="{{ t[preset] }}">
-          <button type="submit">{{ t[preset ~ '_label'] }}</button><span class="wait">{{ t.waiting }}</span>
-        </form>
-      {% endfor %}
-    </div>
+    <form class="presets" method="post" action="/stories/{{ story.id }}/ask" onsubmit="this.classList.add('waiting')">
+      <input type="hidden" name="question" value="{{ t.preset_context }}">
+      <button type="submit">{{ t.preset_context_label }}</button><span class="wait">{{ t.waiting }}</span>
+    </form>
     <form class="ask" method="post" action="/stories/{{ story.id }}/ask" onsubmit="this.classList.add('waiting')">
       <textarea name="question" rows="2" required placeholder="{{ t.ask_placeholder }}"></textarea>
       <button type="submit">{{ t.ask }}</button><span class="wait">{{ t.waiting }}</span>

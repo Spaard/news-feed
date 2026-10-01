@@ -1,14 +1,27 @@
-"""Questions de suivi sur une story : contexte des sources, recherches, fil conservé en base."""
+"""Questions de suivi et synthèse détaillée d'une story : contexte des sources, recherches,
+fil et synthèse conservés en base."""
 
+import logging
 import sqlite3
 
 import httpx2
+import openai
 from openai import AsyncOpenAI
 
 from news_feed import ai, db, reader, stories, wiki
 from news_feed.ingest import now
 
+log = logging.getLogger(__name__)
+
 CONTEXT_ARTICLES = 5  # articles dont le texte complet est donné au modèle
+SYNTHESIS_REQUEST = (
+    "Fais la synthèse de ce que disent les sources sur cet événement : les faits établis, ce qui "
+    "diverge d'un média à l'autre, et ce qui reste incertain."
+)
+# Une synthèse est refaite quand sa story a grossi d'au moins un quart, et d'au moins 2 articles :
+# quelques mises à jour par jour pour une grosse affaire, pas une à chaque relève.
+REFRESH_GROWTH = 0.25
+REFRESH_MIN_NEW = 2
 PROMPT = f"""Tu aides une personne qui commence à suivre l'actualité, et à qui il manque parfois \
 des bases, à comprendre une info. Réponds en {{language}}, clairement, en expliquant les notions \
 et les sigles. Appuie les faits sur les sources numérotées et cite-les [n] ; si une information \
@@ -59,15 +72,25 @@ def _number(
     return number
 
 
-async def ask(
+def synthesis(conn: sqlite3.Connection, story_id: int, lang: str) -> sqlite3.Row | None:
+    """Synthèse détaillée de la story (content, articles, created_at), si elle a été demandée."""
+    return conn.execute(
+        "SELECT content, articles, created_at FROM syntheses WHERE story_id = ? AND lang = ?",
+        (story_id, lang),
+    ).fetchone()
+
+
+async def _answer(
     conn: sqlite3.Connection,
     client: AsyncOpenAI,
     http: httpx2.AsyncClient,
     story_id: int,
     lang: str,
+    history: list[dict],
     question: str,
-) -> None:
-    """Pose `question` sur la story et enregistre la question et la réponse dans le fil."""
+) -> tuple[str, int]:
+    """Réponse du modèle à `question` sur la story, après les échanges `history`, avec les
+    sources numérotées du fil ; et le nombre d'articles de la story qu'il a eus sous les yeux."""
     [(story, articles, _)] = db.load_stories(conn, [story_id])
     known = sources(conn, story_id, lang)
 
@@ -112,11 +135,24 @@ async def ask(
 
     title, _, _ = stories.display(story, articles, lang)
     system = PROMPT.format(language=ai.LANGUAGES[lang], title=title, sources="\n\n".join(context))
-    messages = [{"role": m["role"], "content": m["content"]} for m in thread(conn, story_id, lang)]
-    messages.append({"role": "user", "content": question})
+    messages = [*history, {"role": "user", "content": question}]
     answer = await ai.chat(
         client, system, messages, {"search_wikipedia": search_wikipedia, "search_news": search_news}
     )
+    return answer, len(articles)
+
+
+async def ask(
+    conn: sqlite3.Connection,
+    client: AsyncOpenAI,
+    http: httpx2.AsyncClient,
+    story_id: int,
+    lang: str,
+    question: str,
+) -> None:
+    """Pose `question` sur la story et enregistre la question et la réponse dans le fil."""
+    history = [{"role": m["role"], "content": m["content"]} for m in thread(conn, story_id, lang)]
+    answer, _ = await _answer(conn, client, http, story_id, lang, history, question)
     with conn:
         conn.executemany(
             "INSERT INTO chat_messages (story_id, lang, role, content, created_at)"
@@ -126,3 +162,41 @@ async def ask(
                 (story_id, lang, "assistant", answer, now()),
             ],
         )
+
+
+async def synthesize(
+    conn: sqlite3.Connection,
+    client: AsyncOpenAI,
+    http: httpx2.AsyncClient,
+    story_id: int,
+    lang: str,
+) -> None:
+    """Rédige (ou refait) la synthèse détaillée de la story, à part du fil de questions."""
+    content, count = await _answer(conn, client, http, story_id, lang, [], SYNTHESIS_REQUEST)
+    with conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO syntheses (story_id, lang, content, articles, created_at)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (story_id, lang, content, count, now()),
+        )
+
+
+async def refresh_syntheses(
+    conn: sqlite3.Connection, client: AsyncOpenAI, http: httpx2.AsyncClient
+) -> None:
+    """Refait les synthèses dont la story a assez grossi depuis (voir REFRESH_GROWTH)."""
+    rows = conn.execute(
+        """
+        SELECT s.story_id, s.lang, s.articles, count(a.id) AS current
+        FROM syntheses s JOIN articles a ON a.story_id = s.story_id
+        GROUP BY s.story_id, s.lang
+        """
+    ).fetchall()
+    for row in rows:
+        threshold = max(REFRESH_MIN_NEW, row["articles"] * REFRESH_GROWTH)
+        if row["current"] - row["articles"] < threshold:
+            continue
+        try:
+            await synthesize(conn, client, http, row["story_id"], row["lang"])
+        except (openai.OpenAIError, ai.Unavailable) as exc:
+            log.warning("synthèse de la story %d non mise à jour : %s", row["story_id"], exc)

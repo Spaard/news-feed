@@ -201,6 +201,17 @@ def test_purge_drops_old_minor_content_and_clears_inactive_centroids(tmp_path):
         np.stack([unit(0, 1), unit(1, 0), unit(1, 0), unit(0, 1)]),
     )
     add_article(conn, "https://lemonde/unassigned", published_at=LONG_AGO)
+    kept = add_article(conn, "https://lemonde/synthese", title="Mineure mais synthétisée")
+    stories.assign(conn, [kept], np.stack([unit(-1, 0)]))  # sans rapport avec les autres
+    story_id = story_of(conn)["https://lemonde/synthese"]
+    with conn:
+        conn.execute("UPDATE articles SET published_at = ? WHERE id = ?", (LONG_AGO, kept["id"]))
+        conn.execute("UPDATE stories SET last_seen_at = ? WHERE id = ?", (LONG_AGO, story_id))
+        conn.execute(
+            "INSERT INTO syntheses (story_id, lang, content, articles, created_at)"
+            " VALUES (?, 'fr', 'Synthèse', 1, ?)",
+            (story_id, LONG_AGO),
+        )
 
     stories.purge(conn, NOW)
 
@@ -208,6 +219,7 @@ def test_purge_drops_old_minor_content_and_clears_inactive_centroids(tmp_path):
         "https://lemonde/big",
         "https://bbc/big",
         "https://lemonde/recent",
+        "https://lemonde/synthese",  # une synthèse a été demandée : on la garde
     }
     assert (
         conn.execute("SELECT count(*) FROM stories WHERE centroid IS NOT NULL").fetchone()[0] == 1

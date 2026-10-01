@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from news_feed import db, ingest, web
 from news_feed.config import Settings, load_catalog
-from tests.helpers import add_story, article, web_pages
+from tests.helpers import add_story, add_to_story, article, web_pages
 
 EARLIER = (datetime.now(UTC) - timedelta(hours=2)).isoformat(timespec="seconds")
 RECENT = (datetime.now(UTC) - timedelta(hours=1)).isoformat(timespec="seconds")
@@ -328,25 +328,42 @@ def test_questions_on_a_story_are_answered_with_linked_sources(tmp_path, foundry
     assert '<a class="cite" href="https://lemonde/seisme"' in page
 
 
-def test_story_page_shows_a_detailed_synthesis_once_asked(tmp_path, foundry):
+def test_story_page_shows_the_synthesis_and_offers_an_update_when_articles_arrive(
+    tmp_path, foundry
+):
     foundry.main = lambda body: {"content": "Synthèse des sources [1]."}
     client, conn = make_app(tmp_path, foundry.client())
     story_id = add_quake(conn)
 
-    # Avant toute question : un bouton pour générer la synthèse, pas de section.
     before = client.get(f"/stories/{story_id}").text
-    assert "Résumé des sources</button>" in before
-    assert "Synthèse détaillée" not in before
+    assert "Synthèse détaillée des sources</button>" in before
+    assert "<h2>Synthèse détaillée</h2>" not in before
 
-    client.post(f"/stories/{story_id}/ask", data={"question": web.TEXTS["fr"]["preset_sources"]})
+    response = client.post(f"/stories/{story_id}/synthesis", follow_redirects=False)
+    assert response.headers["location"] == f"/stories/{story_id}"
 
     after = client.get(f"/stories/{story_id}").text
-    assert "Synthèse détaillée" in after
-    assert "Synthèse des sources" in after
+    assert "<h2>Synthèse détaillée</h2>" in after
     assert '<a class="cite" href="https://lemonde/seisme"' in after
-    # Déjà affichée en haut : plus besoin du bouton en double dans le fil.
-    assert "Résumé des sources</button>" not in after
-    assert "Comprendre le contexte</button>" in after
+    assert "D&#39;après 2 articles" in after
+    assert "Mettre à jour</button>" not in after
+    # La synthèse n'encombre pas le fil de questions.
+    assert '<div class="message' not in after
+
+    add_to_story(conn, story_id, article("https://rfi/seisme", source="RFI", published_at=RECENT))
+    page = client.get(f"/stories/{story_id}").text
+    assert "1 nouvel article depuis" in page
+    assert "Mettre à jour</button>" in page
+
+
+def test_synthesis_errors_are_reported_next_to_it(tmp_path):
+    client, conn = make_app(tmp_path)
+    story_id = add_quake(conn)
+
+    response = client.post(f"/stories/{story_id}/synthesis", follow_redirects=False)
+
+    assert response.headers["location"] == f"/stories/{story_id}?error=synthesis"
+    assert "IA n&#39;a pas pu répondre" in client.get(response.headers["location"]).text
 
 
 def test_cross_site_posts_are_rejected(tmp_path, foundry):

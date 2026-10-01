@@ -44,6 +44,12 @@ TEXTS = {
         "translate": "Traduire",
         "summary_title": "Résumé",
         "synthesis_title": "Synthèse détaillée",
+        "synthesize": "Synthèse détaillée des sources",
+        "synthesis_meta_one": "D'après 1 article · rédigée {ago}",
+        "synthesis_meta_many": "D'après {n} articles · rédigée {ago}",
+        "synthesis_new_one": "1 nouvel article depuis",
+        "synthesis_new_many": "{n} nouveaux articles depuis",
+        "synthesis_update": "Mettre à jour",
         "translation_title": "Traduction",
         "no_text": "Texte indisponible ici (réservé aux abonnés, ou site qui bloque la lecture).",
         "ai_error": "L'IA n'a pas pu répondre (service indisponible ou contenu filtré).",
@@ -55,11 +61,6 @@ TEXTS = {
             "Une question sur cette actu, ou sur ce qu'il faut savoir pour la comprendre…"
         ),
         "ask": "Demander",
-        "preset_sources_label": "Résumé des sources",
-        "preset_sources": (
-            "Fais la synthèse de ce que disent les sources sur cet événement : les faits établis, "
-            "ce qui diverge d'un média à l'autre, et ce qui reste incertain."
-        ),
         "preset_context_label": "Comprendre le contexte",
         "preset_context": (
             "Explique-moi les bases pour comprendre cette actualité, comme à quelqu'un qui n'a "
@@ -111,6 +112,12 @@ TEXTS = {
         "translate": "Translate",
         "summary_title": "Summary",
         "synthesis_title": "Detailed synthesis",
+        "synthesize": "Detailed synthesis of the sources",
+        "synthesis_meta_one": "Based on 1 article · written {ago}",
+        "synthesis_meta_many": "Based on {n} articles · written {ago}",
+        "synthesis_new_one": "1 new article since",
+        "synthesis_new_many": "{n} new articles since",
+        "synthesis_update": "Update",
         "translation_title": "Translation",
         "no_text": "Text unavailable here (subscribers only, or the site blocks reading).",
         "ai_error": "The AI could not answer (service unavailable or content filtered).",
@@ -122,11 +129,6 @@ TEXTS = {
             "A question about this story, or about what you need to know to follow it…"
         ),
         "ask": "Ask",
-        "preset_sources_label": "Sources digest",
-        "preset_sources": (
-            "Summarize what the sources say about this event: the established facts, where "
-            "outlets diverge, and what remains uncertain."
-        ),
         "preset_context_label": "Understand the context",
         "preset_context": (
             "Explain the basics I need to understand this story, as to someone who has never "
