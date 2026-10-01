@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }} · news-feed{% endblock %}
+{% block content %}
+<p><a href="{{ '/stories/%d' % article.story_id if article.story_id else '/' }}">{{ t.back_story if article.story_id else t.back }}</a></p>
+<article class="reading">
+  <h1 lang="{{ article.lang }}">{{ article.title }}</h1>
+  <p class="meta">
+    {{ article.source }} · {{ ago(article.published_at, t) }}
+    · <a class="out" href="{{ article.url }}" target="_blank" rel="noopener noreferrer">{{ t.original }} ↗</a>
+  </p>
+  {% if error %}<p class="notice">{{ t.ai_error }}</p>{% endif %}
+
+  {% if not text %}
+    <p class="notice">{{ t.no_text }}</p>
+  {% else %}
+    {% if ai_enabled %}
+      <div class="actions">
+        {% if not summary %}
+          <form method="post" action="/articles/{{ article.id }}/summary" onsubmit="this.classList.add('waiting')">
+            <button type="submit">{{ t.summarize }}</button><span class="wait">{{ t.waiting }}</span>
+          </form>
+        {% endif %}
+        {% if article.lang != lang and not translation %}
+          <form method="post" action="/articles/{{ article.id }}/translation" onsubmit="this.classList.add('waiting')">
+            <button type="submit">{{ t.translate }}</button><span class="wait">{{ t.waiting }}</span>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if summary %}
+      <section class="ai"><h2>{{ t.summary_title }}</h2>{{ summary | rich({}) }}</section>
+    {% endif %}
+
+    {% if translation %}
+      <section class="ai"><h2>{{ t.translation_title }}</h2>{{ translation | rich({}) }}</section>
+      <details lang="{{ article.lang }}">
+        <summary>{{ t.original_text }}</summary>
+        {% for paragraph in text.splitlines() if paragraph.strip() %}<p>{{ paragraph }}</p>{% endfor %}
+      </details>
+    {% else %}
+      <div class="text" lang="{{ article.lang }}">
+        {% for paragraph in text.splitlines() if paragraph.strip() %}<p>{{ paragraph }}</p>{% endfor %}
+      </div>
+    {% endif %}
+  {% endif %}
+</article>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+<form class="filters" method="get" action="/">
+  <select name="period" onchange="this.form.requestSubmit()">
+    {% for key in periods %}
+      <option value="{{ key }}" {% if key == period %}selected{% endif %}>{{ t['period_' ~ key] }}</option>
+    {% endfor %}
+  </select>
+  <select name="sort" onchange="this.form.requestSubmit()">
+    <option value="top" {% if sort == 'top' %}selected{% endif %}>{{ t.sort_top }}</option>
+    <option value="recent" {% if sort == 'recent' %}selected{% endif %}>{{ t.sort_recent }}</option>
+  </select>
+  <fieldset class="zones">
+    {% for key in [''] + zones | list %}
+      <label class="chip">
+        <input type="radio" name="zone" value="{{ key }}" {% if key == zone %}checked{% endif %}
+               onchange="this.form.requestSubmit()">
+        {{ t['zone_' ~ (key or 'all')] }}
+      </label>
+    {% endfor %}
+  </fieldset>
+  <input type="search" name="q" value="{{ q }}" placeholder="{{ t.search }}">
+  <button type="submit">{{ t.filter }}</button>
+  <fieldset class="tags">
+    {% for tag in tags.values() if tag.slug not in zones.values() %}
+      <label class="chip">
+        <input type="checkbox" name="tag" value="{{ tag.slug }}" {% if tag.slug in selected %}checked{% endif %}
+               onchange="this.form.requestSubmit()">
+        {{ tag | attr('label_' ~ lang) }}
+      </label>
+    {% endfor %}
+  </fieldset>
+</form>
+
+<div class="status">
+  <span>{{ t.count_one if total == 1 else t.count_many.format(n=total) }}</span>
+  {% if updated %}<span>· {{ t.updated.format(ago=ago(updated, t)) }}</span>{% endif %}
+  {% if refreshing %}
+    <span>· {{ t.refreshing }}</span>
+  {% else %}
+    <form method="post" action="/refresh">
+      <input type="hidden" name="next" value="{{ request.url.path }}?{{ request.url.query }}">
+      <button type="submit" class="link">{{ t.refresh }}</button>
+    </form>
+  {% endif %}
+</div>
+
+{% if error %}<p class="notice">{{ t.ai_error }}</p>{% endif %}
+{% if brief %}
+  <section class="ai brief"><h2>{{ t.brief_title }}</h2>{{ brief.text | rich(brief.sources) }}</section>
+{% elif ai_enabled and stories %}
+  <form class="actions" method="post" action="/brief" onsubmit="this.classList.add('waiting')">
+    <input type="hidden" name="period" value="{{ period }}">
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <input type="hidden" name="q" value="{{ q }}">
+    <input type="hidden" name="zone" value="{{ zone }}">
+    {% for slug in selected %}<input type="hidden" name="tag" value="{{ slug }}">{% endfor %}
+    <button type="submit">{{ t.brief }}</button><span class="wait">{{ t.waiting }}</span>
+  </form>
+{% endif %}
+
+{% for story in stories %}
+  <article class="story">
+    <h2>
+      <a href="/stories/{{ story.id }}">{{ story.title }}</a>
+      {% if story.translated %}<small class="badge">{{ t.translated }}</small>{% endif %}
+    </h2>
+    {% if story.summary %}<p class="summary">{{ story.summary }}</p>{% endif %}
+    <p class="meta">
+      {{ story.outlets_label }} · {{ ago(story.last_at, t) }}
+      {% for slug in story.tags %}
+        {% set filter = {'zone': zone_of[slug]} if slug in zone_of else {'tag': slug} %}
+        · <a href="{{ with_query(request, page=None, **filter) }}">{{ tags[slug] | attr('label_' ~ lang) }}</a>
+      {% endfor %}
+    </p>
+    <p class="outlets">
+      {% for outlet in story.outlets %}<span class="outlet">{{ outlet }}</span>{% endfor %}
+    </p>
+  </article>
+{% else %}
+  <p class="empty">{{ t.empty }}</p>
+{% endfor %}
+
+{% if page_numbers | length > 1 %}
+  <nav class="pages">
+    {% if page > 1 %}<a href="{{ with_query(request, page=page - 1) }}" aria-label="{{ t.previous }}">‹</a>{% endif %}
+    {% for number in page_numbers %}
+      {% if number is none %}<span>…</span>
+      {% elif number == page %}<span class="current" aria-current="page">{{ number }}</span>
+      {% else %}<a href="{{ with_query(request, page=number) }}">{{ number }}</a>{% endif %}
+    {% endfor %}
+    {% if page < page_numbers[-1] %}<a href="{{ with_query(request, page=page + 1) }}" aria-label="{{ t.next }}">›</a>{% endif %}
+  </nav>
+{% endif %}
+{% endblock %}

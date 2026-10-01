@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}news-feed{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script>
+    // Barre de chargement pendant la navigation (formulaires et liens internes).
+    const loading = (on) => document.documentElement.classList.toggle("loading", on);
+    addEventListener("submit", () => loading(true));
+    addEventListener("click", (event) => {
+      const link = event.target.closest("a[href]");
+      if (link && !link.target && !link.getAttribute("href").startsWith("#")
+          && link.origin === location.origin && !event.ctrlKey && !event.metaKey) loading(true);
+    });
+    addEventListener("pageshow", () => loading(false));
+  </script>
+</head>
+<body>
+  <header class="site">
+    <a class="brand" href="/">news-feed</a>
+    <span class="tagline">{{ t.tagline }}</span>
+    {% set here = request.url.path ~ ('?' ~ request.url.query if request.url.query else '') %}
+    <a class="lang" href="/lang/{{ t.other_lang }}?{{ {'next': here} | urlencode }}">{{ t.other_lang_label }}</a>
+  </header>
+  {% if not ai_enabled %}<p class="notice">{{ t.no_ai }}</p>{% endif %}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

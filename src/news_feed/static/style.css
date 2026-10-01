@@ -1,0 +1,187 @@
+:root {
+  --bg: #fbfaf8;
+  --fg: #1d1d1f;
+  --muted: #66666b;
+  --line: #e4e2dd;
+  --chip: #efede8;
+  --accent: #b3261e;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #151516;
+    --fg: #ececee;
+    --muted: #9d9da3;
+    --line: #2d2d30;
+    --chip: #242427;
+    --accent: #ff7a6e;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 1rem 3rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  overflow-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+}
+
+a { color: inherit; }
+
+header.site {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand { font-size: 1.2rem; font-weight: 700; text-decoration: none; }
+.tagline { color: var(--muted); font-size: 0.9rem; }
+.lang { margin-left: auto; color: var(--muted); font-size: 0.9rem; }
+
+.notice { padding: 0.5rem 0.75rem; border-radius: 0.5rem; background: var(--chip); font-size: 0.9rem; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+.filters select,
+.filters input[type="search"],
+.filters button {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
+.filters input[type="search"] { flex: 1 1 12rem; min-width: 0; }
+/* min-width : sans lui, un fieldset s'élargit à son contenu et fait déborder la page. */
+.filters fieldset { display: flex; flex-wrap: wrap; gap: 0.35rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+.tags { width: 100%; }
+.zones { gap: 0; }
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 1rem;
+  background: var(--chip);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+/* La case reste dans le formulaire mais c'est la puce entière qui montre la sélection. */
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip:has(input:checked) { border-color: var(--accent); background: var(--bg); color: var(--accent); font-weight: 600; }
+.chip:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+.zones .chip { border-radius: 0; border-color: var(--line); }
+.zones .chip:first-child { border-radius: 1rem 0 0 1rem; }
+.zones .chip:last-child { border-radius: 0 1rem 1rem 0; }
+.zones .chip:has(input:checked) { border-color: var(--accent); }
+.out { white-space: nowrap; }
+
+.status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem; margin: 0 0 0.5rem; color: var(--muted); font-size: 0.85rem; }
+.status form { margin: 0; }
+button.link { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; }
+
+/* Téléphone : des cibles assez grandes pour le doigt. */
+@media (max-width: 40rem) {
+  .filters button, .filters select, .filters input[type="search"] { min-height: 2.5rem; }
+}
+
+/* Barre de chargement pendant la navigation (voir base.html). */
+.loading body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  height: 3px;
+  background: var(--accent);
+  transform-origin: left;
+  animation: loading 2s ease-out forwards;
+}
+.loading main { opacity: 0.5; transition: opacity 0.2s 0.15s; }
+@keyframes loading { from { transform: scaleX(0); } to { transform: scaleX(0.9); } }
+
+.story { padding: 0.9rem 0; border-bottom: 1px solid var(--line); }
+.story h2 { margin: 0 0 0.25rem; font-size: 1.05rem; line-height: 1.35; }
+.story h2 a { text-decoration: none; }
+.story h2 a:hover { text-decoration: underline; }
+.summary {
+  display: -webkit-box;
+  margin: 0 0 0.35rem;
+  overflow: hidden;
+  color: var(--muted);
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.detail .summary { display: block; }
+.meta { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.outlets { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.35rem 0 0; }
+.outlet { padding: 0 0.35rem; border: 1px solid var(--line); border-radius: 0.3rem; font-size: 0.75rem; }
+.badge {
+  padding: 0 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 0.3rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 400;
+  vertical-align: middle;
+}
+
+h1 { font-size: 1.4rem; line-height: 1.3; }
+.sources { padding-left: 1.5rem; }
+.sources li { margin-bottom: 0.6rem; }
+.sources .meta { display: block; }
+
+.pages { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem; margin-top: 1.25rem; }
+.pages a, .pages span { min-width: 2.5rem; padding: 0.45rem 0.6rem; border-radius: 0.4rem; text-align: center; text-decoration: none; }
+.pages a { background: var(--chip); }
+.pages .current { background: var(--accent); color: var(--bg); font-weight: 600; }
+.empty { padding: 2rem 0; color: var(--muted); text-align: center; }
+
+/* Lecture, IA et questions de suivi */
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+.actions form { margin: 0; }
+button {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: var(--chip);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+.wait { display: none; color: var(--muted); font-size: 0.9rem; }
+.waiting button { display: none; }
+.waiting .wait { display: inline; }
+.ai { margin: 1rem 0; padding: 0.75rem 1rem; border-left: 3px solid var(--accent); background: var(--chip); border-radius: 0 0.5rem 0.5rem 0; }
+.ai h2 { margin: 0 0 0.5rem; font-size: 1rem; }
+.cite { font-size: 0.8em; text-decoration: none; color: var(--accent); }
+.reading .text p, .reading details p { margin: 0 0 0.9rem; }
+.reading details { margin-top: 1rem; }
+.chat { margin-top: 2rem; }
+.message { margin: 0.75rem 0; }
+.message.user { padding: 0.5rem 0.75rem; border-radius: 0.5rem; background: var(--chip); }
+.message .who { margin: 0; color: var(--muted); font-size: 0.8rem; }
+.message.user p:last-child { margin: 0; }
+.presets { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0 0.5rem; }
+.ask { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-start; }
+.ask textarea {
+  flex: 1 1 16rem;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+}
