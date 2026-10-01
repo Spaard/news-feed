@@ -111,7 +111,7 @@ Créer l'identité de la CI et lui donner le droit d'agir sur le groupe :
 $clientId = az ad app create --display-name news-feed-ci --query appId -o tsv
 az ad sp create --id $clientId
 '{"name": "main", "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:<compte>/news-feed:ref:refs/heads/main",
+  "subject": "repo:<compte>@<id-compte>/news-feed@<id-repo>:ref:refs/heads/main",
   "audiences": ["api://AzureADTokenExchange"]}' | Set-Content credential.json
 az ad app federated-credential create --id $clientId --parameters credential.json
 Remove-Item credential.json
@@ -121,7 +121,12 @@ az role assignment create --assignee $clientId --role Contributor `
 az account show --query "{AZURE_TENANT_ID: tenantId, AZURE_SUBSCRIPTION_ID: id}"
 ```
 
-Dans le repo GitHub, ouvrir *Settings* → *Secrets and variables* → *Actions* → onglet **Variables**, et créer :
+Le *subject* doit être **exactement** celui que GitHub présente. GitHub y met les identifiants immuables du compte et du repo, ce qui évite qu'un repo recréé sous le même nom en hérite.
+- `<id-compte>` : le champ `id` de `https://api.github.com/users/<compte>`.
+- `<id-repo>` : le champ `id` de `https://api.github.com/repos/<compte>/news-feed`.
+- En cas de doute, le sujet exact apparaît dans le log de l'étape `azure/login` du job `deploy`, ligne *subject claim*.
+
+Dans le repo GitHub, ouvrir *Settings* → *Secrets and variables* → *Actions* → onglet **Variables**, puis le bloc **Repository variables** (pas *Environment variables*), et créer :
 
 | Variable | Valeur |
 |---|---|
@@ -156,3 +161,4 @@ Dès le push suivant, le job `deploy` passe la Container App sur l'image du comm
 | « Accès refusé » après le login | Le compte GitHub n'est pas `allowedUser` | Relancer l'étape 5 avec le bon login |
 | `{"detail":"Not Found"}` sur `/.auth/me` | Cette page d'Easy Auth n'existe pas ici, faute de stockage de jetons | Ouvrir la racine de l'URL |
 | L'app ne change pas après un `az containerapp update …:latest` | `latest` désignait encore l'ancienne image | Utiliser le sha complet du commit |
+| `AADSTS700213: No matching federated identity record` dans `azure/login` | Le *subject* de la règle de confiance ne correspond pas exactement à celui de GitHub | Recopier le *subject claim* du log, puis `az ad app federated-credential update --id <AZURE_CLIENT_ID> --federated-credential-id main --parameters credential.json` |

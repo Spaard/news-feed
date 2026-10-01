@@ -160,7 +160,7 @@ flowchart LR
 ### OIDC : déployer sans mot de passe
 
 Pour mettre à jour la Container App, GitHub Actions doit s'authentifier auprès d'Azure. Plutôt que de stocker un mot de passe Azure dans GitHub, on utilise une **fédération d'identité (OIDC)** :
-1. On déclare à Azure une règle : « fais confiance aux jetons que GitHub signe pour le repo `news-feed`, branche `main` ». C'est l'identité `news-feed-ci`, avec un *federated credential*.
+1. On déclare à Azure une règle : « fais confiance aux jetons que GitHub signe pour ce repo-là (désigné par ses identifiants immuables), branche `main` ». C'est l'identité `news-feed-ci`, avec un *federated credential*.
 2. À chaque exécution, GitHub fournit au job un jeton signé, valable quelques minutes.
 3. Azure vérifie la signature et le repo, puis accorde les droits de l'identité (*Contributor* sur le groupe de ressources).
 
