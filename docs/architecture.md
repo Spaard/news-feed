@@ -60,9 +60,15 @@ Une story est **importante** si au moins deux médias la couvrent, si l'un d'eux
 |---|---|---|
 | `embed` | À chaque relève | Regrouper les articles |
 | `fast` | À chaque relève | Tags, titres traduits |
-| `main` | Seulement sur un clic | Synthèse détaillée, « Comprendre le contexte », questions de suivi, résumé ou traduction d'un article, brief |
+| `main` | Sur un clic, plus la mise à jour des synthèses demandées | Synthèse détaillée, « Comprendre le contexte », questions de suivi, résumé ou traduction d'un article, brief |
 
-Les réponses de `main` sont gardées : redemander la même chose ne coûte rien. Pour répondre, `main` dispose de plusieurs sources :
+Les réponses de `main` sont gardées : redemander la même chose ne coûte rien.
+
+**La synthèse détaillée** d'une story est rangée à part du fil de questions, avec le nombre d'articles qu'elle couvre.
+- Après chaque relève, elle est refaite automatiquement si la story a grossi d'au moins un quart, et d'au moins 2 articles. Une grosse affaire est donc mise à jour quelques fois par jour, pas à chaque relève.
+- Entre-temps, la page indique combien d'articles sont arrivés depuis, et propose de la mettre à jour tout de suite.
+
+Seules les stories dont tu as demandé la synthèse sont concernées. Elles ne sont jamais purgées. Pour répondre, `main` dispose de plusieurs sources :
 - le texte des articles gratuits de la story ;
 - deux outils qu'il appelle lui-même : une recherche Wikipédia, pour les bases, et une recherche dans l'archive de l'app, pour l'historique d'un sujet.
 

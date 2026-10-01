@@ -206,7 +206,7 @@ def save_translations(
 
 def purge(conn: sqlite3.Connection, now: str) -> None:
     """Efface les centroïdes des stories inactives et supprime le contenu mineur ancien
-    (sauf les stories sur lesquelles des questions ont été posées)."""
+    (sauf les stories sur lesquelles des questions ont été posées ou une synthèse demandée)."""
     current = datetime.fromisoformat(now)
     inactive_before = (current - ACTIVE_WINDOW).isoformat(timespec="seconds")
     minor_before = (current - MINOR_RETENTION).isoformat(timespec="seconds")
@@ -221,6 +221,7 @@ def purge(conn: sqlite3.Connection, now: str) -> None:
                 SELECT a.story_id FROM articles a WHERE a.story_id IS NOT NULL
                 GROUP BY a.story_id HAVING {NOTEWORTHY})
             AND id NOT IN (SELECT story_id FROM chat_messages)
+            AND id NOT IN (SELECT story_id FROM syntheses)
             """,
             (minor_before,),
         )

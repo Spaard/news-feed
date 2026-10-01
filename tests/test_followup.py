@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 import httpx2
 
 from news_feed import db, followup
-from tests.helpers import add_story, article, tool_call, web_pages
+from tests.helpers import add_story, add_to_story, article, tool_call, web_pages
 
 EARLIER = (datetime.now(UTC) - timedelta(hours=2)).isoformat(timespec="seconds")
 LATER = (datetime.now(UTC) - timedelta(hours=1)).isoformat(timespec="seconds")
@@ -72,3 +72,70 @@ def test_ask_answers_with_numbered_sources_and_keeps_the_thread(tmp_path, foundr
     assert "[3] Wikipédia : Guerre russo-ukrainienne" in follow_up[0]["content"]
     assert len(followup.thread(conn, story_id, "fr")) == 4
     assert followup.thread(conn, story_id, "en") == []
+
+
+def quake(conn) -> int:
+    return add_story(
+        conn,
+        article("https://lemonde.example/seisme", source="Le Monde", published_at=EARLIER),
+        article("https://bbc.example/quake", source="BBC", lang="en", published_at=LATER),
+    )
+
+
+def test_synthesis_is_kept_apart_from_the_thread_and_cites_the_sources(tmp_path, foundry):
+    conn = db.connect(tmp_path / "news.db")
+    story_id = quake(conn)
+    http = httpx2.AsyncClient(transport=httpx2.MockTransport(web_pages))
+    foundry.main = lambda body: {"content": "Les faits établis [1], vus aussi par [2]."}
+
+    asyncio.run(followup.synthesize(conn, foundry.client(), http, story_id, "fr"))
+
+    synthesis = followup.synthesis(conn, story_id, "fr")
+    assert (synthesis["content"], synthesis["articles"]) == (
+        "Les faits établis [1], vus aussi par [2].",
+        2,
+    )
+    assert followup.thread(conn, story_id, "fr") == []
+    assert set(followup.sources(conn, story_id, "fr")) == {1, 2}
+    messages = foundry.requests[-1]["messages"]
+    assert [m["role"] for m in messages] == ["system", "user"]
+    assert messages[1]["content"] == followup.SYNTHESIS_REQUEST
+    assert followup.synthesis(conn, story_id, "en") is None
+
+
+def test_syntheses_are_redone_once_their_story_has_grown_enough(tmp_path, foundry):
+    conn = db.connect(tmp_path / "news.db")
+    story_id = quake(conn)
+    http = httpx2.AsyncClient(transport=httpx2.MockTransport(web_pages))
+    versions = iter(["Première version.", "Version à jour."])
+    foundry.main = lambda body: {"content": next(versions)}
+    asyncio.run(followup.synthesize(conn, foundry.client(), http, story_id, "fr"))
+
+    # Un seul article de plus : en dessous du seuil (au moins 2), rien ne change.
+    add_to_story(conn, story_id, article("https://rfi.example/seisme", source="RFI"))
+    asyncio.run(followup.refresh_syntheses(conn, foundry.client(), http))
+    assert followup.synthesis(conn, story_id, "fr")["content"] == "Première version."
+
+    add_to_story(conn, story_id, article("https://dw.example/quake", source="DW", lang="en"))
+    asyncio.run(followup.refresh_syntheses(conn, foundry.client(), http))
+    synthesis = followup.synthesis(conn, story_id, "fr")
+    assert (synthesis["content"], synthesis["articles"]) == ("Version à jour.", 4)
+
+
+def test_a_failed_synthesis_update_keeps_the_previous_one(tmp_path, foundry):
+    conn = db.connect(tmp_path / "news.db")
+    story_id = quake(conn)
+    http = httpx2.AsyncClient(transport=httpx2.MockTransport(web_pages))
+    foundry.main = lambda body: {"content": "Première version."}
+    asyncio.run(followup.synthesize(conn, foundry.client(), http, story_id, "fr"))
+    add_to_story(
+        conn,
+        story_id,
+        article("https://rfi.example/seisme", source="RFI"),
+        article("https://dw.example/quake", source="DW", lang="en"),
+    )
+
+    foundry.main = lambda body: {}  # réponse filtrée par Azure
+    asyncio.run(followup.refresh_syntheses(conn, foundry.client(), http))
+
+    assert followup.synthesis(conn, story_id, "fr")["content"] == "Première version."

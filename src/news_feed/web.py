@@ -149,18 +149,6 @@ def page_numbers(page: int, pages: int) -> list[int | None]:
     return numbers
 
 
-def last_answer(thread: Sequence[Mapping], question: str) -> str | None:
-    """Réponse du fil à la dernière occurrence de `question`, posée mot pour mot (presets)."""
-    answer, asked = None, False
-    for message in thread:
-        if message["role"] == "user":
-            asked = message["content"] == question
-        elif asked:
-            answer = message["content"]
-            asked = False
-    return answer
-
-
 def selection(
     period: str, sort: str, q: str, tags: Sequence[str], zone: str, known: Mapping
 ) -> dict:
@@ -201,6 +189,8 @@ def create_app(
         async with cycle:
             try:
                 await ingest.run_cycle(conn, catalog, client)
+                if client is not None:
+                    await followup.refresh_syntheses(conn, client, http)
             except Exception:
                 log.exception("relève en échec")
 
@@ -381,23 +371,36 @@ def create_app(
         return RedirectResponse("/?" + urlencode([*filters, ("brief", key)]), status_code=303)
 
     @app.get("/stories/{story_id}")
-    async def story_page(request: Request, story_id: int, error: int = 0):
+    async def story_page(request: Request, story_id: int, error: str = ""):
+        # error : "1" pour une question du fil restée sans réponse, "synthesis" pour la synthèse.
         loaded = db.load_stories(conn, [story_id])
         if not loaded:
             raise HTTPException(status_code=404)
         story, articles, story_tags = loaded[0]
         lang = lang_of(request)
-        thread = followup.thread(conn, story_id, lang)
         return render(
             request,
             "story.html",
             articles=articles,
             story=card(story, articles, story_tags, lang),
-            thread=thread,
-            synthesis=last_answer(thread, TEXTS[lang]["preset_sources"]),
+            thread=followup.thread(conn, story_id, lang),
+            synthesis=followup.synthesis(conn, story_id, lang),
             sources=followup.sources(conn, story_id, lang),
             error=error,
         )
+
+    @app.post("/stories/{story_id}/synthesis")
+    async def synthesize(request: Request, story_id: int):
+        if not db.load_stories(conn, [story_id]):
+            raise HTTPException(status_code=404)
+        try:
+            if client is None:
+                raise ai.Unavailable("IA non configurée")
+            await followup.synthesize(conn, client, http, story_id, lang_of(request))
+        except (openai.OpenAIError, ai.Unavailable) as exc:
+            log.warning("synthèse indisponible : %s", exc)
+            return RedirectResponse(f"/stories/{story_id}?error=synthesis", status_code=303)
+        return RedirectResponse(f"/stories/{story_id}", status_code=303)
 
     @app.post("/stories/{story_id}/ask")
     async def ask(request: Request, story_id: int):
