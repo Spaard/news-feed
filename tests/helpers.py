@@ -53,6 +53,15 @@ def add_story(
     return story_id
 
 
+def add_to_story(conn: sqlite3.Connection, story_id: int, *articles: db.NewArticle) -> None:
+    """Rattache de nouveaux articles à une story existante, comme le ferait une relève."""
+    db.insert_articles(conn, articles, NOW)
+    with conn:
+        conn.executemany(
+            "UPDATE articles SET story_id = ? WHERE url = ?", [(story_id, a.url) for a in articles]
+        )
+
+
 def fixture(name: str) -> bytes:
     return (FIXTURES / name).read_bytes()
 

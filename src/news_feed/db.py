@@ -110,6 +110,18 @@ MIGRATIONS = [
         PRIMARY KEY (story_id, lang, number)
     );
     """,
+    """
+    -- Synthèse détaillée d'une story, dans une langue ; refaite quand la story grossit.
+    -- Ses citations [n] renvoient aux sources du fil (chat_sources).
+    CREATE TABLE syntheses (
+        story_id INTEGER NOT NULL REFERENCES stories (id) ON DELETE CASCADE,
+        lang TEXT NOT NULL,
+        content TEXT NOT NULL,
+        articles INTEGER NOT NULL,  -- nombre d'articles de la story quand elle a été rédigée
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (story_id, lang)
+    );
+    """,
 ]
 
 SORTS = {"top": "score DESC, last_at DESC", "recent": "last_at DESC"}

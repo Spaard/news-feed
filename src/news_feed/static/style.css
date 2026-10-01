@@ -149,7 +149,7 @@ h1 { font-size: 1.4rem; line-height: 1.3; }
 .empty { padding: 2rem 0; color: var(--muted); text-align: center; }
 
 /* Lecture, IA et questions de suivi */
-.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 1rem 0; }
 .actions form { margin: 0; }
 button {
   padding: 0.35rem 0.75rem;
