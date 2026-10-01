@@ -60,7 +60,7 @@ Une story est **importante** si au moins deux médias la couvrent, si l'un d'eux
 |---|---|---|
 | `embed` | À chaque relève | Regrouper les articles |
 | `fast` | À chaque relève | Tags, titres traduits |
-| `main` | Sur un clic, plus la mise à jour des synthèses demandées | Synthèse détaillée, « Comprendre le contexte », questions de suivi, résumé ou traduction d'un article, brief |
+| `main` | Sur un clic, plus la mise à jour des synthèses demandées et le digest du matin | Synthèse détaillée, « Comprendre le contexte », questions de suivi, résumé ou traduction d'un article, brief |
 
 Les réponses de `main` sont gardées : redemander la même chose ne coûte rien.
 
@@ -68,7 +68,12 @@ Les réponses de `main` sont gardées : redemander la même chose ne coûte rien
 - Après chaque relève, elle est refaite automatiquement si la story a grossi d'au moins un quart, et d'au moins 2 articles. Une grosse affaire est donc mise à jour quelques fois par jour, pas à chaque relève.
 - Entre-temps, la page indique combien d'articles sont arrivés depuis, et propose de la mettre à jour tout de suite.
 
-Seules les stories dont tu as demandé la synthèse sont concernées. Elles ne sont jamais purgées. Pour répondre, `main` dispose de plusieurs sources :
+Seules les stories dont tu as demandé la synthèse sont concernées. Elles ne sont jamais purgées.
+
+**Le digest du matin.** Chaque jour à 7 h (heure de Paris), la relève qui suit rédige, en français et en anglais, un brief des 20 sujets les plus importants des dernières 24 h. C'est le même mécanisme que le bouton *Brief*.
+- On le lit sur la page *Digest*.
+- L'accueil l'annonce jusqu'à ce qu'il ait été lu.
+- Sur un téléphone, le raccourci *Digest du matin* s'obtient par un appui long sur l'icône de l'app. Pour répondre, `main` dispose de plusieurs sources :
 - le texte des articles gratuits de la story ;
 - deux outils qu'il appelle lui-même : une recherche Wikipédia, pour les bases, et une recherche dans l'archive de l'app, pour l'historique d'un sujet.
 
@@ -182,4 +187,4 @@ Rien de secret n'est stocké dans GitHub. Les variables `AZURE_CLIENT_ID`, `AZUR
 |---|---|
 | Container App, toujours allumée | 5 à 15 € par mois |
 | Stockage et logs | quelques centimes |
-| Foundry, à l'usage | Les relèves coûtent peu : embeddings et petit modèle. L'essentiel vient des clics sur les boutons IA, servis par `main` |
+| Foundry, à l'usage | Les relèves coûtent peu : embeddings et petit modèle. L'essentiel vient des clics sur les boutons IA et des synthèses tenues à jour, servis par `main`. Le digest ajoute deux appels par jour. |

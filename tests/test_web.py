@@ -2,6 +2,7 @@ import base64
 import json
 import sqlite3
 import threading
+import time
 from datetime import UTC, datetime, timedelta
 
 import httpx2
@@ -364,6 +365,56 @@ def test_synthesis_errors_are_reported_next_to_it(tmp_path):
 
     assert response.headers["location"] == f"/stories/{story_id}?error=synthesis"
     assert "IA n&#39;a pas pu répondre" in client.get(response.headers["location"]).text
+
+
+def wait_for(condition, timeout: float = 5.0) -> None:
+    """Attend que `condition()` soit vraie : la relève tourne en tâche de fond."""
+    deadline = time.monotonic() + timeout
+    while not condition():
+        assert time.monotonic() < deadline, "délai dépassé"
+        time.sleep(0.05)
+
+
+def test_morning_digest_is_written_once_a_day_and_announced_until_read(
+    tmp_path, foundry, monkeypatch
+):
+    async def no_cycle(conn, catalog, client):
+        return []
+
+    monkeypatch.setattr(ingest, "run_cycle", no_cycle)
+    monkeypatch.setattr(web, "DIGEST_HOUR", 0)  # le digest est dû dès maintenant
+    foundry.main = lambda body: {"content": "Ce matin, le séisme [1]."}
+    client, conn = make_app(tmp_path, foundry.client())
+    story_id = add_quake(conn)
+
+    with client:
+        assert "pas encore de digest" in client.get("/digest").text.lower()
+        client.post("/refresh", data={"next": "/"})
+        wait_for(lambda: "Ce matin" in client.get("/digest").text)
+
+        page = client.get("/digest").text
+        today = web.long_date(datetime.now(web.DIGEST_TIMEZONE).date().isoformat(), web.TEXTS["fr"])
+        assert f"Le digest du {today}" in page
+        assert f'<a class="cite" href="/stories/{story_id}"' in page
+        assert len(foundry.requests) == 2  # un digest par langue
+
+        # Une fois lu, l'accueil ne l'annonce plus ; une autre relève ne le refait pas.
+        client.cookies.clear()
+        assert "Le digest de ce matin est prêt" in client.get("/").text
+        client.get("/digest")
+        assert "Le digest de ce matin est prêt" not in client.get("/").text
+        client.post("/refresh", data={"next": "/"})
+        wait_for(lambda: "Relève en cours" not in client.get("/").text)
+        assert len(foundry.requests) == 2
+
+
+def test_dates_are_written_out_in_each_language():
+    assert web.long_date("2026-10-01", web.TEXTS["fr"]) == "jeudi 1 octobre"
+    assert web.long_date("2026-10-01", web.TEXTS["en"]) == "Thursday, October 1"
+
+
+def test_both_languages_have_the_same_texts():
+    assert web.TEXTS["fr"].keys() == web.TEXTS["en"].keys()
 
 
 def test_cross_site_posts_are_rejected(tmp_path, foundry):

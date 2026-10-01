@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ t.digest }} · news-feed{% endblock %}
+{% block content %}
+<p><a href="/">{{ t.back }}</a></p>
+{% if brief %}
+  <h1>{{ t.digest_title.format(date=long_date(day, t)) }}</h1>
+  <section class="ai brief">{{ brief.text | rich(brief.sources) }}</section>
+  <p class="meta">{{ t.digest_about }}</p>
+{% else %}
+  <h1>{{ t.digest }}</h1>
+  <p class="empty">{{ t.digest_empty }}</p>
+{% endif %}
+{% endblock %}

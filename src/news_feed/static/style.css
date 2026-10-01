@@ -45,7 +45,8 @@ header.site {
 
 .brand { font-size: 1.2rem; font-weight: 700; text-decoration: none; }
 .tagline { color: var(--muted); font-size: 0.9rem; }
-.lang { margin-left: auto; color: var(--muted); font-size: 0.9rem; }
+.links { display: flex; gap: 1rem; margin-left: auto; font-size: 0.9rem; }
+.lang { color: var(--muted); }
 
 .notice { padding: 0.5rem 0.75rem; border-radius: 0.5rem; background: var(--chip); font-size: 0.9rem; }
 
