@@ -109,7 +109,7 @@ git config core.hooksPath .githooks                 # une fois par clone : véri
 - [x] Site web pensé mobile d'abord, bascule FR/EN
 - [x] Creuser : lecture, synthèse, contexte, questions de suivi, brief, sources citées
 - [x] Mise en ligne sur Azure Container Apps (Bicep, Easy Auth, image publiée par la CI)
-- [ ] Déploiement continu par OIDC : chaque push vert sur `main` met l'app à jour
+- [x] Déploiement continu par OIDC : chaque push vert sur `main` met l'app à jour
 - [ ] Synthèse détaillée régénérée quand de nouveaux articles rejoignent la story
 - [ ] PWA : installable sur l'écran d'accueil du téléphone
 - [ ] Digest du matin
