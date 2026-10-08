@@ -32,6 +32,17 @@ news-feed relève environ 80 flux RSS (Le Monde, France Info, BBC, The Guardian,
 | 📱 **Une vraie app** | S'installe sur l'écran d'accueil du téléphone et s'ouvre en plein écran, sans barre de navigateur. |
 | 💸 **IA maîtrisée** | Seuls le regroupement, les tags et les titres traduits tournent tout seuls, avec de petits modèles. Le reste ne part que sur un clic, et il est mis en cache. |
 
+C'est un projet personnel : l'instance en ligne est réservée à son auteur, mais tout le code et l'infrastructure sont ici pour la faire tourner chez soi.
+
+## Sous le capot
+
+- **Regroupement multilingue par embeddings** : chaque article est comparé aux centroïdes des stories actives sur 48 h (similarité cosinus, seuils calibrés sur de vrais titres FR et EN). Les embeddings des articles ne sont jamais stockés.
+- **Pipeline reprenable** : chaque étape (regroupement, tags, traductions) relit son travail en attente dans la base, donc un cycle interrompu reprend au suivant. Un lot refusé par le filtre de contenu d'Azure est coupé en deux jusqu'à l'article en cause.
+- **IA outillée et sourcée** : les questions de suivi passent par une boucle d'appels d'outils (Wikipédia, archive de l'app), avec des sources numérotées de façon stable dans le fil.
+- **Sobre à exploiter** : FastAPI rendu côté serveur (Jinja, sans build JS), SQLite avec recherche plein texte FTS5, un seul conteneur.
+- **Aucun secret dans GitHub** : la CI (lint, tests, build et smoke test de l'image) publie sur GHCR et déploie sur Azure par OIDC. Infrastructure en Bicep, accès protégé par Easy Auth.
+- **Tests sans réseau** : un faux Foundry derrière le vrai SDK `openai`, des flux RSS en fixtures.
+
 ## Démarrage rapide
 
 Prérequis : [uv](https://docs.astral.sh/uv/), et une ressource [Microsoft Foundry](docs/deploiement.md#1-microsoft-foundry) pour l'IA.
