@@ -40,7 +40,7 @@ Un seul conteneur fait tout. Il sert le site, et toutes les 20 minutes il relèv
 
 ## Des flux RSS aux stories
 
-Chaque relève enchaîne cinq étapes. Une étape interrompue reprend simplement à la relève suivante, car chacune cherche en base ce qui lui reste à faire.
+Chaque relève enchaîne cinq étapes. Une étape interrompue reprend simplement à la relève suivante, car chacune cherche en base ce qui lui reste à faire. Le travail IA est traité et enregistré par tranches de 500 articles : après une panne, un retard de plusieurs milliers d'articles tient dans la mémoire du conteneur (0,5 Gio), le serveur web reste disponible entre deux tranches, et une relève coupée en route garde les tranches déjà faites.
 
 1. **Téléchargement des flux.** Les flux sont téléchargés en parallèle. Une requête conditionnelle (ETag / Last-Modified) évite de retélécharger un flux inchangé. Les paramètres de suivi sont retirés des URL, ce qui sert aussi à dédoublonner. Les articles de plus de 7 jours sont ignorés.
 2. **Regroupement.** Chaque nouvel article reçoit un embedding : un vecteur qui représente son sens, quelle que soit sa langue (`embed`). Il rejoint la story active la plus proche si la similarité dépasse un seuil, sinon il en ouvre une nouvelle.

@@ -37,7 +37,7 @@ C'est un projet personnel : l'instance en ligne est réservée à son auteur, ma
 ## Sous le capot
 
 - **Regroupement multilingue par embeddings** : chaque article est comparé aux centroïdes des stories actives sur 48 h (similarité cosinus, seuils calibrés sur de vrais titres FR et EN). Les embeddings des articles ne sont jamais stockés.
-- **Pipeline reprenable** : chaque étape (regroupement, tags, traductions) relit son travail en attente dans la base, donc un cycle interrompu reprend au suivant. Un lot refusé par le filtre de contenu d'Azure est coupé en deux jusqu'à l'article en cause.
+- **Pipeline reprenable** : chaque étape (regroupement, tags, traductions) relit son travail en attente dans la base, donc un cycle interrompu reprend au suivant. Ce travail se fait par tranches enregistrées au fur et à mesure, pour qu'un gros retard ne sature pas le conteneur. Un lot refusé par le filtre de contenu d'Azure est coupé en deux jusqu'à l'article en cause.
 - **IA outillée et sourcée** : les questions de suivi passent par une boucle d'appels d'outils (Wikipédia, archive de l'app), avec des sources numérotées de façon stable dans le fil.
 - **Sobre à exploiter** : FastAPI rendu côté serveur (Jinja, sans build JS), SQLite avec recherche plein texte FTS5, un seul conteneur.
 - **Aucun secret dans GitHub** : la CI (lint, tests, build et smoke test de l'image) publie sur GHCR et déploie sur Azure par OIDC. Infrastructure en Bicep, accès protégé par Easy Auth.
