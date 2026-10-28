@@ -2,10 +2,12 @@ import asyncio
 from pathlib import Path
 
 import httpx2
+import openai
 import pytest
 
 from news_feed import db, ingest
 from news_feed.config import Catalog, Feed, load_catalog
+from tests.helpers import article
 
 FIXTURES = Path(__file__).parent / "fixtures"
 FETCHED_AT = "2026-10-01T12:00:00+00:00"
@@ -186,6 +188,61 @@ def test_enrich_groups_tags_and_translates(tmp_path, foundry):
     assert [tuple(row) for row in translated] == [
         (story["https://decoder/model"], "Nouveau modèle d'IA", None)
     ]
+
+
+def test_enrich_works_through_a_backlog_in_saved_chunks(tmp_path, foundry, monkeypatch):
+    monkeypatch.setattr(ingest, "ENRICH_CHUNK", 2)
+    conn = db.connect(tmp_path / "news.db")
+    db.insert_articles(
+        conn,
+        [
+            article(
+                f"https://ex/{i}", title=f"Sujet {i}", published_at=f"2026-10-01T0{i}:00:00+00:00"
+            )
+            for i in range(5)
+        ],
+        FETCHED_AT,
+    )
+    embedded = []
+
+    def embed(texts):
+        embedded.append(texts)
+        if len(embedded) == 3:
+            raise httpx2.ConnectError("Foundry indisponible")
+        return [[1.0, float(i)] for i in range(len(texts))]
+
+    foundry.embed = embed
+
+    with pytest.raises(openai.APIConnectionError):
+        asyncio.run(ingest.enrich(conn, (), foundry.client()))
+
+    # Tranches de 2, dans l'ordre chronologique ; les 2 premières restent enregistrées.
+    assert [[text.split("\n")[0] for text in batch] for batch in embedded] == [
+        ["Sujet 0", "Sujet 1"],
+        ["Sujet 2", "Sujet 3"],
+        ["Sujet 4"],
+    ]
+    assert conn.execute("SELECT count(*) FROM articles WHERE story_id IS NULL").fetchone()[0] == 1
+
+    foundry.embed = lambda texts: [[1.0, 0.0] for _ in texts]
+    tagged_batches = []
+
+    def chat(system, payload):
+        ids = [item["id"] for item in payload]
+        tagged_batches.append(ids)
+        if 1 in ids:
+            return None  # rejeté par le filtre : l'article 1 attend la relève suivante
+        return {"articles": [{"id": i, "tags": []} for i in ids]}
+
+    foundry.chat = chat
+
+    asyncio.run(ingest.enrich(conn, (), foundry.client()))
+
+    # Tranches de 2 par id ; le lot coupé en deux pour isoler l'article 1, qui n'est pas
+    # redemandé ensuite dans la même relève.
+    assert tagged_batches == [[1, 2], [1], [2], [3, 4], [5]]
+    tagged = conn.execute("SELECT id FROM articles WHERE tagged = 0").fetchall()
+    assert [row["id"] for row in tagged] == [1]
 
 
 def test_run_cycle_keeps_articles_when_ai_fails_or_is_missing(tmp_path, foundry):

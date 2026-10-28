@@ -26,6 +26,10 @@ SUMMARY_MAX_CHARS = 600
 # Certains flux exposent toute leur archive : on ne garde que l'actualité récente.
 MAX_ENTRY_AGE = timedelta(days=7)
 TRACKING_PARAM = re.compile(r"^(utm_.*|xtor|at_medium|at_campaign)$")
+# L'enrichissement traite et enregistre le travail en attente par tranches : après une panne,
+# le retard (des milliers d'articles) tient en mémoire, laisse la main au serveur web entre deux
+# tranches, et une relève interrompue garde ce qu'elle a déjà fait.
+ENRICH_CHUNK = 500
 
 
 @dataclass(frozen=True)
@@ -166,21 +170,32 @@ async def enrich(conn: sqlite3.Connection, tags: Sequence[Tag], client: openai.A
     Chaque étape reprend ce qui reste à faire en base : une étape interrompue est reprise à la
     relève suivante.
     """
-    pending = conn.execute(
-        "SELECT id, title, summary, published_at, focus FROM articles WHERE story_id IS NULL"
-    ).fetchall()
-    if pending:
+    while pending := conn.execute(
+        """
+        SELECT id, title, summary, published_at, focus FROM articles WHERE story_id IS NULL
+        ORDER BY published_at, id LIMIT ?
+        """,
+        (ENRICH_CHUNK,),
+    ).fetchall():
         vectors = await ai.embed(client, [f"{a['title']}\n{a['summary']}" for a in pending])
         stories.assign(conn, pending, vectors)
-    untagged = conn.execute(
-        "SELECT id, title, summary FROM articles WHERE tagged = 0 AND story_id IS NOT NULL"
-    ).fetchall()
-    if untagged:
+    last_id = 0
+    # Les articles d'un lot en échec restent `tagged = 0` : on avance par id pour ne pas les
+    # redemander dans la même relève.
+    while untagged := conn.execute(
+        """
+        SELECT id, title, summary FROM articles
+        WHERE tagged = 0 AND story_id IS NOT NULL AND id > ? ORDER BY id LIMIT ?
+        """,
+        (last_id, ENRICH_CHUNK),
+    ).fetchall():
+        last_id = untagged[-1]["id"]
         stories.save_tags(conn, await ai.tag_articles(client, [tuple(a) for a in untagged], tags))
     for lang in ai.LANGUAGES:
         missing = stories.untranslated(conn, lang)
-        if missing:
-            stories.save_translations(conn, lang, await ai.translate_titles(client, missing, lang))
+        for start in range(0, len(missing), ENRICH_CHUNK):
+            chunk = missing[start : start + ENRICH_CHUNK]
+            stories.save_translations(conn, lang, await ai.translate_titles(client, chunk, lang))
 
 
 async def run_cycle(
