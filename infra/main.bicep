@@ -123,7 +123,16 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           ]
           volumeMounts: [ { volumeName: 'data', mountPath: '/data' } ]
           probes: [
-            { type: 'Liveness', httpGet: { path: '/healthz', port: 8000 } }
+            // Tolérante : pendant une relève, /healthz peut répondre lentement sur 0,25 vCPU. Avec les
+            // valeurs par défaut (1 s, 3 échecs), Azure tuait le conteneur en boucle (exit 137, 404).
+            {
+              type: 'Liveness'
+              httpGet: { path: '/healthz', port: 8000 }
+              initialDelaySeconds: 10
+              periodSeconds: 30
+              timeoutSeconds: 10
+              failureThreshold: 5
+            }
           ]
         }
       ]
