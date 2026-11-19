@@ -155,6 +155,8 @@ Dès le push suivant, le job `deploy` passe la Container App sur l'image du comm
 | Changer l'infra, une variable d'environnement ou un secret (clé Foundry, token GHCR) | Relancer la commande de l'étape 5 |
 | Changer seulement la configuration d'Easy Auth, sans ressaisir les secrets | `az containerapp auth update`, avec par exemple `--excluded-paths` ou `--set login.cookieExpiration.timeToExpiration=…`, en gardant le Bicep aligné |
 | Lire les logs en direct | `az containerapp logs show --name news-feed --resource-group news-feed --follow` |
+| Mettre l'app en pause (plus de relèves, d'appels IA ni de transactions sur le stockage ; la base et la config restent) | `az containerapp revision deactivate --name news-feed --resource-group news-feed --revision <révision active>`, puis `gh variable delete AZURE_CONTAINERAPP_NAME` pour qu'un push sur `main` ne la relance pas |
+| La relancer | `az containerapp revision activate` sur la même révision (`az containerapp revision list --all` donne son nom), puis `gh variable set AZURE_CONTAINERAPP_NAME --body news-feed` pour réactiver le déploiement continu |
 
 ## Dépannage
 
